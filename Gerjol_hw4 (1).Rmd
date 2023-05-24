@@ -1,0 +1,442 @@
+---
+title: "STAT 4410/8416 Homework 4"
+author: "Gerjol, Nicholas"
+date: "Due on Nov 23, 2021"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+opts_chunk$set(fig.align='center', dpi=100, message=FALSE, warning=FALSE, cache=TRUE)
+output <- opts_knit$get("rmarkdown.pandoc.to")
+if(!is.null(output)) {
+if (output=="html") opts_chunk$set(out.width = '400px') else
+  opts_chunk$set(out.width='.6\\linewidth')
+}
+```
+
+**1.** **Exploring XML data;** In this problem we will read the xml data. For this we will obtain a xml data called olive oils from the link http://www.ggobi.org/book/data/olive.xml. Please follow the directions in each step and provide your codes and output.
+
+a. Parse the xml data from the above link and store in a object called `olive`. Answer the following questions using R code and type your answer:
+      i. What is the name of the root of the xml file?
+```{r}
+library(XML)
+myUrl <- "http://www.ggobi.org/book/data/olive.xml"
+olive <- xmlParse(myUrl)
+oliveroot <- xmlRoot(olive, skip= TRUE)
+xmlName(oliveroot) 
+```
+      
+      ii. What is the count of data that is available under the root name? 
+```{r}
+xmlSize(oliveroot)
+#root has 1 child: "data"
+```
+      
+      iii. Extract the text value for the `description` of the XML
+      
+```{r}
+xmlValue(oliveroot[[1]][[1]], trim=TRUE)
+```
+      
+b. Examine the actual file by going to the link above and answer the following questions using R code and type your answer:
+      i. Identify the path of `real variables` in the xml tree
+```{r}
+library(xml2)
+myxml <- read_xml("http://www.ggobi.org/book/data/olive.xml")
+xml_path(xml_find_all(myxml, ".//realvariable"))
+```
+  
+      ii. What is the `names` of real variables?
+```{r}
+rvPath <- "//ggobidata/data/variables/realvariable"
+rvnames <- xpathSApply(oliveroot, rvPath, xmlGetAttr, "name")
+rvnames
+```
+      
+      iii. What is the count of the real variables?
+```{r}
+length(rvnames)
+```
+      
+      iv. Identify the path of `categorical variables` in the xml tree
+```{r}
+xml_path(xml_find_all(myxml, ".//categoricalvariable"))
+```
+      
+      v. What is the `names` of categorical variables?
+```{r}
+cvPath <- "//ggobidata/data/variables/categoricalvariable"
+cvnames <- xpathSApply(oliveroot, cvPath, xmlGetAttr, "name")
+cvnames
+```
+      
+      vi. What is the count of the categorical variables?
+```{r}
+length(cvnames)
+```
+      
+      vii. How many levels does `categoricalvariable` with `name=area` have? Extract the text value for level 5.
+```{r}
+varInfo <- oliveroot[[1]][[2]][[2]][[1]]
+xmlSize(varInfo) #This is the number of levels
+xmlValue(oliveroot[[1]][[2]][[2]][[1]][[5]])
+```
+      
+c. Notice the path for the data in xml file. Use that path to obtain the data and store the data in a data frame called `oliveDat`. Change the column names as you have obtained the column names. Display some data.
+
+```{r}
+datPath <- "//ggobidata/data/records/record"
+datValue <- xpathApply(olive, datPath, xmlValue)
+datValue <- gsub('na ', 'na',datValue)
+datValue <- strsplit(gsub('\\n','',datValue), split=" ")
+oliveDat <- do.call(rbind.data.frame, datValue)
+names(oliveDat) <- c(cvnames,rvnames)
+head(oliveDat)
+```
+
+d. Generate a plot of your choice to display any feature of `oliveDat` data. Notice that the column names are different fatty acids. The values are % of fatty acids found in the Italian olive oils coming from different regions and areas.
+```{r}
+library(reshape2)
+library(ggplot2)
+oliveDat <- subset(oliveDat, select = -c(region))
+head(oliveDat)
+meltdat <- melt(oliveDat, "area")
+meltdat$value <- as.numeric(meltdat$value)
+head(meltdat)
+p<-ggplot(data=meltdat, aes(x=area, y=value)) +
+  geom_bar(stat="identity") 
+p + facet_wrap(~variable, scales = "free")
+
+```
+
+**2.** **Working with date-time data;** The object `myDate` contains the date and time. Based on this object answer the following questions using R code and type the answer after your findings.
+```{r}
+myDate <- "2020-10-01 09:42:43"
+```
+
+a. Convert `myDate` into a date and time object with Portland, OR time zone. Display the result.
+```{r}
+
+library(lubridate)
+myDate <- ymd_hms(myDate)
+myDate <- with_tz(myDate, tzone = "America/Los_Angeles")
+myDate
+```
+
+b. Write your codes so that it displays the week day and also the month of `myDate`. 
+```{r}
+wday(myDate, label=TRUE, abbr=FALSE)
+month(myDate, label=TRUE, abbr=FALSE)
+```
+
+c. What weekday and the month is it after exactly 100 years from `myDate`?
+```{r}
+newdate <- myDate + years(100)
+wday(newdate, label=TRUE, abbr=FALSE)
+month(newdate, label=TRUE, abbr=FALSE)
+```
+
+d. Add two month with myDate and display the resulting date time. Explain why the time zone has changed even though you did not ask for time zone change.
+```{r}
+myDate + months(2)
+#The time zone changed to UTC because daylight savings time goes into effect
+```
+
+e. Suppose this homework is due on November 23, 2021 by 11.59PM. Compute and display how many seconds you got to complete this homework? Also compute the hours.
+```{r}
+duedate <- ymd_hms("2021-11-23 11:59:00") 
+difftime(duedate, myDate, units=c("secs"))
+difftime(duedate, myDate, units=c("hours"))
+#use time zone in the second line
+```
+
+f. Suppose you are working with a Time-Series data. Where should the Time Value be? X-Axis or the Y-Axis? Explain your answer.
+```{r}
+#Time-series data should always have time as the x-axis represents the independent variable with the y-axis as the dependent variable and when we look at how something changes over time the time is the independent variable
+```
+
+g. How do you get the current date as set in the computer? Does the date belong to a Leap Year?
+```{r}
+ now()
+leap_year(now())
+```
+
+h. For the years `2020` & `2021`, count the number of weekends. Which year has the highest number of Weekends?
+```{r}
+year1startdate <- as.Date("2020-01-01")
+year1enddate <- as.Date("2020-12-31")
+year2startdate <- as.Date("2021-01-01")
+year2enddate <- as.Date("2021-12-31")
+sum(!weekdays(seq(year1startdate, year1enddate, "days")) %in% c("Saturday", "Sunday")) #2020
+sum(!weekdays(seq(year2startdate, year2enddate, "days")) %in% c("Saturday", "Sunday")) #2021
+#2020 has more weekends by a single day
+```
+
+i. What is the month(MM) and day(DD) on the `305`th day of the current year?
+```{r}
+year <- floor_date(now(),unit="year")
+newdate <- year + days(304)
+month(newdate) #month
+day(newdate) #day
+```
+
+j. The Date `2020-10-20` is formatted `YYYY-MM-DD`, format it into `MM-DD-YYYY`
+```{r}
+date2 <- "2020-10-20"
+trialdate <- ymd(date2)
+format(trialdate,format="%m-%d-%Y")
+```
+
+k. Find if the Date on the question above is the weekend or a weekday.
+```{r}
+weekdays(trialdate) #Tuesday is a weekday
+```
+
+
+
+
+**3.** **Creating HTML Page;** In this problem we would like to create a basic HTML page. Please follow each of the steps below and finally submit your HTML file on Canvas. Please note that you don't need to answer these questions here in the .Rmd file.
+
+  a. Open a notepad or any plain text editor. Write down some basic HTML codes as shown in online (year 2014) Lecture 15, slide 6 and modify according to the following questions. Save the file as hw4.html and upload on Canvas as a separate file. 
+  b. Write "What is data science?" in the first header tag, `<h1></h1>`
+  c. Hw1 solution contains the answer of what is data science. The answer has three paragraphs. Write the three paragraphs of text about data science in three different paragraph tags `<p></p>`. You can copy the text from hw1 solution.
+  d. Write "What we learnt from hw1" in second heading under tag `<h2></h2>`
+  e. Copy all the points we learnt in hw1 solution. List all the points under ordered list tag `<ol></ol>`. Notice that each item of the list should be inside list item tag `<li></li>`.
+  f. Now we want to make the text beautiful. For this we would write some CSS codes in between `<head></head>` tag under `<style></style>`. For this please refer to online (year 2014) lecture 15 slide 8. First change the fonts of the body tag to Helvetica Neue.
+  g. For the paragraph that contains the definition of data science, give an attribute `id='dfn'` and in CSS change the color of 'dfn' to white, background-color to olive and font to be bold. 
+  h. For other paragraphs, give an attribute `class='cls'` and in CSS change the color of 'cls' to green.
+  i. Write CSS so that color of h1, h2 headers becomes `orange`.
+  j. (Optional and will not be graded) Write java Scripts codes so that onClick on `h1` header, it shows a message 'Its about data science'.
+
+
+**4.** **Walmart Sales Analysis** Download and read the dataset `walmart_sales.csv` and `walmart_fuel_prices.csv`.
+```{r}
+library(data.table)
+wmsales <- fread("walmart_sales.csv")
+wmfuel <- fread("walmart_fuel_prices.csv")
+wmsales$Date <- ymd(wmsales$Date)
+wmfuel$Date <- ymd(wmfuel$Date)
+head(wmsales)
+head(wmfuel)
+
+```
+
+We will follow the following data description when working with the above 2 datasets:
+
+ * `index:` index is a default value of count
+ * `Store:` Store is represented in number ID(1,2,3,4,...)
+ * `Dept:` Dept is Department in each Store represented in number ID (1,2,3,4,...)
+ * `Date:` Date is in YYYY-MM-DD char format - *needs to be converted into Date data type*
+ * `Weekly_Sales:` Sales of a given Dept in a given Store for the Date
+ * `Temperature:` Average temperature on the Date at given Store region
+ * `Fuel_Price:` Cost of the Fuel on the given Date at a given Store
+ * `IsHoliday:` Is the given Date a holiday Week? 
+
+Answer all of the following questions below and support your answer showing the codes and a plot (if applicable):
+
+ a. For both datasets, breakdown the `Date` column and create additional new columns `Year`, `Month`, and `Day`. You should now have additional 3 new columns in your both dataset. Report only the column names for both the dataset.
+```{r}
+wmsales$Year <- year(wmsales$Date)
+wmsales$Month <- month(wmsales$Date)
+wmsales$Day <- day(wmsales$Date)
+wmfuel$Year <- year(wmfuel$Date)
+wmfuel$Month <- month(wmfuel$Date)
+wmfuel$Day <- day(wmfuel$Date)
+colnames(wmsales)
+colnames(wmfuel)
+```
+ 
+ b. In `walmart_sales`: which `Month(s)` of `Year` have the highest `Weekly_Sales`? Report the Year, Month, Store, and Dept.
+```{r}
+monthsales <- aggregate(Weekly_Sales ~ Year + Month + Store + Dept, wmsales, sum)
+monthsales <- as.data.table(monthsales)
+monthsales <- monthsales[order(-Weekly_Sales)]
+head(monthsales, 1)
+```
+ 
+ c. In `walmart_sales`: calculate the average monthly sales by Department for each Store. Which Store(s) has the highest average monthly sales on the department(s)? Report the Store, Department, Date.
+```{r}
+avgsales <- aggregate(Weekly_Sales ~ Store + Dept, monthsales, mean)
+avgsales <- as.data.table(avgsales)
+avgsales <- avgsales[order(-Weekly_Sales)]
+head(avgsales)
+```
+ 
+ d. In `walmart_sales`: which month of year `2011` has the highest overall sales by Store? Name the holiday(Labor day, July 4th, Halloween, Thanksgiving, Christmas,... etcs) that falls on the month. After that do the same for `2012`. Does the highest sales per month fall on the same holiday for both years? Report your findings for both year.
+```{r}
+elevensales <- wmsales[ wmsales$"Year" %in% c(2011) ,]
+elevensales<- aggregate(Weekly_Sales ~ Month + Store, elevensales, sum)
+elevensales <- as.data.table(elevensales)
+elevensales <- elevensales[order(-Weekly_Sales)]
+head(elevensales,1) #This is Christmas
+
+twelvesales <- wmsales[ wmsales$"Year" %in% c(2012) ,]
+twelvesales<- aggregate(Weekly_Sales ~ Month + Store, twelvesales, sum)
+twelvesales <- as.data.table(twelvesales)
+twelvesales <- twelvesales[order(-Weekly_Sales)]
+head(twelvesales,1) #Juneteeth or Fathers day?
+```
+ 
+ e. In `walmart_sales`: report the lowest sales per month for the year `2011` for `IsHoliday == TRUE`. Name the holiday(Labor day, July 4th, Halloween, Thanksgiving, Christmas,... etcs) that falls on the month. Do the same for `2012` and report if the lowest sales are on the same month.
+```{r}
+holidaysales <- wmsales[ wmsales$"IsHoliday" %in% c(TRUE) ,]
+holidaysales <- holidaysales[holidaysales$"Year" %in% c(2011) ,]
+holidaysales <- aggregate(Weekly_Sales ~ Month, holidaysales, sum)
+holidaysales <- as.data.table(holidaysales)
+holidaysales <- holidaysales[order(Weekly_Sales)]
+head(holidaysales, 1) #Lowest is on christmas
+
+tholidaysales <- wmsales[ wmsales$"IsHoliday" %in% c(TRUE) ,]
+tholidaysales <- tholidaysales[tholidaysales$"Year" %in% c(2012) ,]
+tholidaysales <- aggregate(Weekly_Sales ~ Month, tholidaysales, sum)
+tholidaysales <- as.data.table(tholidaysales)
+tholidaysales <- tholidaysales[order(Weekly_Sales)]
+head(tholidaysales, 1) #Lowest is labor day
+
+```
+ 
+ f. In `walmart_sales`: We have 45 unique stores. Generate a nice plot on the total sales by store for the year `2012`. Report the Store number.
+```{r}
+storesales <- wmsales[ wmsales$"Year" %in% c(2012) ,]
+storesales<- aggregate(Weekly_Sales ~ Store, storesales, sum)
+names(storesales) <- c("Store_Number" , "Total_Sales")
+p<-ggplot(data=storesales, aes(x=Store_Number, y=Total_Sales)) +
+  geom_bar(stat="identity") 
+p
+```
+ 
+ g. In `walmart_fuel_prices`: For the year `2011` do you think higher the `temperature` relates to higher `fuel price`? Support your answer with a nice plot.
+```{r}
+fueltemp <- wmfuel[ wmfuel$"Year" %in% c(2011) ,]
+fueltemp <- aggregate(Fuel_Price ~ Temperature, fueltemp, mean)
+p <- ggplot(fueltemp, aes(x=Temperature, y=Fuel_Price)) +
+ geom_line()
+p
+#the deviation of the data is quite large, but the overall trend is still positive correlation. I would say higher temperature does relate to higher price, but it isn't a strong effect. 
+```
+ 
+ h. In `walmart_fuel_prices`: For the year `2010` which `Store` had the lowest Fuel Price? Report the `month` and `temperature`. On the same `month`, what was the highest fuel price for the store? Report the difference.
+```{r}
+
+storefuel <-  wmfuel[ wmfuel$"Year" %in% c(2010) ,]
+storefuel <- aggregate(Fuel_Price ~ Month + Day + Store, storefuel, sum)
+storefuel <- as.data.table(storefuel)
+storefuel <- storefuel[order(Fuel_Price)]
+head(storefuel, 1)#Lowest fuel price store is store 36, 2.472 on February 19th
+lowprice <- storefuel[1,4] 
+storefuel <- storefuel[ storefuel$"Store" %in% c(36) ,]
+storefuel <- storefuel[ storefuel$"Month" %in% c(2) ,]
+storefuel <- storefuel[order(-Fuel_Price)]
+head(storefuel, 1) #higest fuel price same month for store 36, 2.545 on February 5th
+highprice <- storefuel[1,4] 
+highprice - lowprice
+```
+ 
+ i. In `walmart_fuel_prices`: For the `IsHoliday == TRUE`, which month has the lowest `Fuel Price` for the year `2012`? name the holiday(Labor day, July 4th, Halloween, Thanksgiving, Christmas,... etcs) that falls on the month. Also report month of the highest fuel price and name of the holiday.
+```{r}
+storefuel <-  wmfuel[ wmfuel$"Year" %in% c(2012) ,]
+storefuel <-  wmfuel[ wmfuel$"IsHoliday" %in% c(TRUE) ,]
+storefuel <- aggregate(Fuel_Price ~ Month + Day + Store, storefuel, sum)
+storefuel <- as.data.table(storefuel)
+storefuel <- storefuel[order(Fuel_Price)]
+head(storefuel, 1 ) #9/10 has the lowest fuel price at 2.513 this is around labor day
+storefuel <- storefuel[order(-Fuel_Price)]
+head(storefuel, 1) #9/7 had the highest fuel price at 4.124 this is around labor day
+```
+
+
+
+**5.** **Optional for undergraduate but mandatory for graduate students** 
+Download the data from [Github - click here](https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv) 
+
+The link above contains a time-series data for COVID-19 confirmed cases in the US. Limit the data to only use `Nebraska State` and please answer the following questions:
+
+a. What is the total confirmed cases in Nebraska as of October 30th 2020 as per the dataset?
+
+```{r}
+library(dplyr)
+fulldat <- fread("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv")
+nebraskadat <- fulldat[ fulldat$"Province_State" %in% c("Nebraska") ,]
+temp <- select(nebraskadat, contains('10/31/20'))
+temp[ , lapply(.SD, sum)]
+```
+
+b. On what date has the highest confirmed cases? Demonstrate using a suitable graph for all the available data.
+```{r}
+library(dplyr)
+df = subset(nebraskadat, select = -c(UID, iso2, iso3, code3, FIPS, Admin2, Country_Region, Lat, Long_, Combined_Key))
+test <- aggregate(. ~ Province_State, df, sum)
+test
+testmelt <- melt(test, id="Province_State")
+testmelt$variable <- mdy(testmelt$variable)
+p <- ggplot(testmelt, aes(x=variable, y=value)) +
+ geom_line()
+p
+testmelt$variable[length(testmelt$variable)] #graph shows highest case is last entry
+
+```
+
+c. Which County has the highest daily confirmed cases? Report both the County name and the date
+```{r}
+trimmeddat <- subset(nebraskadat, select = -c(UID, iso2, iso3, code3, FIPS, Province_State, Country_Region, Lat, Long_, Combined_Key))
+countymelt <- melt(trimmeddat, id="Admin2")
+countymelt <- as.data.table(countymelt)
+sortdat <- countymelt[order(-value),]
+names(sortdat) <- c("County", "date", "case_num")
+sortdat[1]
+```
+
+d. Identify two countries that have top total confirmed cases. Generate a time series plot of daily confirm cases for these two countries.
+```{r}
+df = subset(nebraskadat, select = -c(UID, iso2, iso3, code3, FIPS, Province_State, Country_Region, Lat, Long_, Combined_Key))
+df <- melt(df,id="Admin2")
+test <- aggregate(. ~ Admin2, df, sum)
+test <- as.data.table(test)
+names(test) <- c("County", "datesum", "case_num_sum")
+testsort <- test[order(-case_num_sum),]
+testsort[1:2,] # This gives the top 2 confirmed cases
+
+df <- as.data.table(df)
+names(df) <- c("County" , "Date", "case_num")
+df$Date <- mdy(df$Date)
+df <- df[ df$"County" %in% c("Douglas","Lancaster") ,]
+p <- ggplot(df, aes(x=Date, y=case_num, color=(County))) +
+ geom_line()
+p
+```
+
+e. Show the total confirmed cases for all the locations in an interactive world map (hint: you may use `leaflet` package in `R`.
+
+```{r}
+library(leaflet)
+
+test$datesum <- NULL
+
+tempdat = subset(nebraskadat, select = c(UID, iso2, iso3, code3, FIPS, Admin2, Province_State, Country_Region, Lat, Long_, Combined_Key))
+names(test) <- c("Admin2", "case_num_sum")
+merged <- merge(test, tempdat)
+
+```
+
+
+```{r}
+library(maps)
+head(nebraskadat)
+states <- map_data("state")
+ne_coords <- subset(states, region=="nebraska")
+head(ne_coords)
+counties <- map_data("county")
+ne_county <- subset(counties, region=="nebraska")
+nebraskadat$group <- ne_coords$group[1:95]
+ne_map <- ggplot(data=merged, mapping = aes(x=Long_, y=Lat))  + geom_polygon(color="black", fill="gray")
+ne_map + geom_polygon(data = merged, fill=NA, color="white")
+```
+
+
+
+
+

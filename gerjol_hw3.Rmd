@@ -1,0 +1,355 @@
+---
+title: "STAT 4410/8416 Homework 3"
+author: "Gerjol, Nicholas"
+date: "Due on Oct 30, 2021"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+ 
+```{r}
+
+```
+
+```{r setup, include=FALSE}
+library(knitr)
+library(dplyr)
+library(data.table)
+opts_chunk$set(fig.align='center', message=FALSE, cache=TRUE)
+output <- opts_knit$get("rmarkdown.pandoc.to")
+if(!is.null(output)) {
+  if(output=="html") opts_chunk$set(out.width = '400px') else
+    opts_chunk$set(out.width='.6\\linewidth')
+}
+```
+
+**1.** **Text Data analysis:** Download "lincoln-last-speech.txt" from Canvas which contains Lincoln's last public address. Now answer the following questions and include your codes.  
+
+   a) Read the text and store the text in `lAddress`. Show the first 70 characters from the first element of the text.  
+ 
+```{r}
+lAddress <- 'lincoln-last-speech.txt'
+lAddress <- readChar(lAddress, file.info(lAddress)$size)
+substr(lAddress, start=1, stop=70)
+
+```
+
+   b) Now we are interested in the words used in his speech. Extract all the words from `lAddress`, convert all of them to lower case and store the result in `vWord`. Display first few words.  
+   
+```{r}
+library(stringr)
+vWord <- tolower(lAddress)
+vWord <- str_extract_all(vWord, "[a-z]+")
+lapply(vWord,head)
+```
+
+   
+   c) The words like `am`, `is`, `my` or `through` are not much of our interest and these types of words are called stop-words. The package `tm` has a function called `stopwords()`. Get all the English stop words and store them in `sWord`. Display few stop words in your report.  
+      
+```{r}
+library(tm)
+sWord <- stopwords()
+sWord[1:7]
+```
+
+   d) Remove all the `sWord` from `vWord` and store the result in `cleanWord`. Display first few clean words.  
+         
+```{r}
+check <- as.data.frame(unlist(vWord) %in% sWord)
+cleanWord <- as.data.frame(unlist(vWord))
+cleanWord$check <- check
+colnames(cleanWord) <- c("a","b")
+partf <- cleanWord
+cleanWord <- subset(cleanWord, b==FALSE)
+cleanWord <- cleanWord$a
+head(cleanWord)
+```
+
+   e) `cleanWord` contains all the cleaned words used in Lincoln's address. We would like to see which words are more frequently used. Find 15 most frequently used clean words and store the result in `fWord`. Display first 5 words from `fWord` along with their frequencies.  
+            
+```{r}
+cleanWord <- as.data.table(cleanWord)
+cleanWord[, `num` := .N, by = cleanWord]
+data <- arrange(cleanWord,desc(num))
+cleanWord <- data %>% filter(duplicated(cleanWord) == FALSE)
+cleanWord[1:5]
+```
+   f) \label{coord} Construct a bar chart showing the count of each words for the 15 most frequently used words. Add a layer `+coord_flip()` with your plot.  
+             
+```{r}
+library(ggplot2)
+cleanplot <- cleanWord[1:15]
+p<-ggplot(data=cleanplot, aes(x=cleanWord, y=num)) +
+  geom_bar(stat="identity") +coord_flip()
+p
+```
+ 
+   g) What is the reason for adding a layer `+coord_flip()` with the plot in question (2f). Explain what would happen if we would not have done that.  
+           
+```{r}
+# we need the x axis on the left side of the graph so that we can read all the words as the labels. 
+#If the words are all on the bottom the text overlaps as there isn't space for them all. 
+```
+ 
+
+   h) The plot in question (2f) uses bar plot to display the data. Can you think of another plot that delivers the same information but looks much simpler? Demonstrate your answer by generating such a plot.   
+          
+```{r}
+colnames(cleanplot) <- c("class", "freq")
+pie <- ggplot(cleanplot, aes(x = "", y=freq, fill = factor(class))) + 
+  geom_bar(width = 1, stat = "identity") +
+  theme(axis.line = element_blank(), 
+        plot.title = element_text(hjust=0.5)) 
+
+
+
+pie + coord_polar(theta = "y", start=0)
+```
+ 
+   i) In the question (2c), you removed words that are called `stop-words`. Now please answer the following:
+         a) Count the total stop words from `lAddress` and store it in `stopWordsCount`
+         b) Count the total words (including stop-words) from `lAddress` and store it in `lAddressCount`
+         c) Divide `stopWordsCount` by `lAddressCount` and report the percentage
+         d) Explain in your own words what does the percentage indicate in this context?
+
+          
+```{r}
+#a:
+partf <- subset(partf, b==TRUE)
+partf <- partf$a
+stopWordsCount <- length(partf)
+stopWordsCount
+#b:
+lAddressCount <-lapply(vWord,length)
+lAddressCount
+#c:
+percentage <- as.numeric(stopWordsCount)/as.numeric(lAddressCount)
+percentage
+#d: This shows that approximately 53.8% of the total words in the address are stop words. 
+# This percentage is also the amount of words we removed from the address. 
+```
+ 
+**2.** **Regular Expressions:** Write a regular expression to match patterns in the following strings. Demonstrate that your regular expression indeed matched that pattern by including codes and results. Carefully review how the first problem is solved for you.  
+
+   a) We have a vector `vText` as follows. Write a regular expression that matches `g, og, go or ogo` in `vText` and replace the matches with '.'.
+```{r}
+vText <- c('google','logo','dig', 'blog', 'boogie' )
+```
+
+**Answer:**
+```{r}
+pattern <- 'o?go?'
+gsub(pattern, '.', vText)
+```
+
+   b) Replace only the 5 or 6 digit numbers with the word "found" in the following vector. Please make sure that 3, 4, or 7 digit numbers do not get changed.
+```{r}
+vPhone <- c('874','6783','345345', '32120', '468349', '8149674' )
+gsub('^\\d{5,6}$', 'found', vPhone)
+```  
+
+   c) Replace all the characters that are not among the 26 English characters or a space. Please replace with an empty spring.
+```{r}
+myText <- "#y%o$u @g!o*t t9h(e) so#lu!tio$n c%or_r+e%ct"
+myText <- gsub("[^[:alpha:] ]", "", myText)
+myText
+```  
+
+  d) In the following text, replace all the words that are exactly 3 or 4 characters long with triple dots `...'
+```{r}
+myText <- "Each of the three and four character words will be gone now"
+myText <- strsplit(myText, " ")[[1]]
+myText <- paste0(myText," ")
+myText <- gsub("^\\w{3,4}\\s","... ",myText)
+myText <- paste(myText, collapse="")
+myText
+```  
+
+   e) Extract all the three numbers embedded in the following text.
+```{r}
+bigText <- 'There are four 20@14 numbers hid989den in the 500 texts'
+bigText <- as.numeric(str_extract_all(bigText, "[0-9]{3}")[[1]])
+bigText
+```  
+
+   f) Extract all the words between parenthesis from the following string text and count number of words.
+```{r}
+myText <- 'The salries are reported (in test millions) for every company.'
+myText <- as.character(str_extract(myText, "[:punct:]+[^[:punct:]]+[:punct:]"))
+max <- nchar(myText)
+myText <- substr(myText,2,max-1)
+myText
+wordsplit <- strsplit(myText," ")
+numword <- lapply(wordsplit,length)
+numword
+```  
+
+   g) Extract the texts in between _ and dot(.) in the following vector. Your output should be 'bill', 'pay', 'fine-book'.  
+```{r}
+myText <- c("H_bill.xls", "Big_H_pay.xls", "Use_case_fine-book.pdf")
+myText <- as.character(str_extract(myText, "\\_+[^\\_]+\\."))
+max <- nchar(myText)
+myText <- substr(myText,2,max-1)
+myText
+```  
+
+   h) Extract the numbers (return only integers) that are followed by the units 'ml' or 'lb' in the following text.   
+```{r}
+myText <- 'Received 10 apples with 200ml water at 8pm with 15 lb meat and 2lb salt'
+myText <- gsub(" ", "", myText)
+myText <- gsub("lb", "lb ", myText)
+myText <- gsub("ml", "ml ", myText)
+myText <- str_extract_all(myText, "[0-9]+(lb|ml)")
+myText
+numwords <- length(myText)
+numwords
+```  
+
+   i) Extract only the word in between pair of symbols `$`. Count number of words you have found between pairs of dollar sign `$`.  
+```{r}
+myText <- 'Math symbols are $written$ in $between$ dollar $signs$'
+myText <- str_extract_all(myText, "\\$+[^\\$]+\\$")
+myText
+lengths(myText)
+```  
+
+   j) Extract all the valid equations in the following text.
+```{r}
+myText <- 'equation1: 2+3=5, equation2 is: 2*3=6, do not extract 2w3=6'
+myText <- gsub(",", "", myText)
+myText <- str_extract_all(myText, "[0-9]{1}\\W{1}[0-9]{1}\\W{1}[0-9]{1}")
+myText
+```  
+
+  k. Extract all the letters of the following sentence and check if it contains all 26 letters in the alphabet. If not, produce code that will return the total number of unique letters that are included and show the letters that are missing.
+```{r}
+myText <- 'there are five wizard boxing matches to be judged'
+myText <- gsub(" ", "", myText)
+myText <- str_extract_all(myText,".")
+myText <- lapply(myText,unique)
+myText <- lapply(myText,sort)
+myText
+lapply(myText, length)
+#this gives the number of letters
+test <- str_detect(myText,letters)
+df <- data.frame(letters)
+df$match <- test
+df <- data.table(df)
+df[match == FALSE,]
+#these letters are missing
+
+
+
+
+```  
+        
+**3.** **Extracting data from the web:** Our plan is to extract data from web sources. This includes email addresses, phone numbers or other useful data. The function `readLines()` is very useful for this purpose.  
+
+   a) Read all the text in http://mamajumder.github.io/index.html and store your texts in `myText`. Show first few rows of `myText` and examine the structure of the data.  
+```{r}
+myText <- readLines('http://mamajumder.github.io/index.html')
+head(myText)
+# The data looks to be an html script
+```  
+  
+   b) Write a regular expression that would extract all the http web links addresses from `myText`. Include your codes and display the results that show only the http web link addresses and nothing else. 
+```{r}
+myText <- str_c(myText,collapse=', ')
+myTextweb <- str_extract_all(myText, "h{1}t{1}t{1}p{1}[^\"]+")
+myTextweb
+```  
+  
+ 
+   c) Now write a regular expression that would extract all the emails from `myText`. Include your codes and display the results that show only the email addresses and nothing else. 
+   
+```{r}
+myTextemail <- str_extract_all(myText, "m{1}a{1}i{1}l{1}t{1}o{1}[^\"]+")
+myTextemail <- gsub("^.......","",myTextemail)
+myTextemail
+```  
+  
+  d. Write a regular expression to extract words with 11 or more letters in the text. Include your codes and display the result that shows the words without duplication.
+   
+```{r}
+myTextwords <- str_extract_all(myText, "\\w{11,}")
+myTextwords <- lapply(myTextwords,unique)
+myTextwords
+```  
+  
+   e) Now we want to extract all the phone/fax numbers in `myText`. Write a regular expression that would do this. Demonstrate your codes showing the results.  
+   
+```{r}
+myTestphones <- str_extract_all(myText,"\\({1}\\d{3}\\){1}\\s{1}\\d{3}\\D{1}\\d{4}")
+myTestphones
+```  
+  
+   f) The link of ggplot2 documentation is https://ggplot2-book.org/individual-geoms.html and we would like to get the list of individual ggplot2 geoms from there. Write a regular expression that would extract all the geoms names (geom_bar is one of them) from this link and display the unique geoms. How many unique geoms does page list?  
+   
+```{r}
+myggtext <- readLines('https://ggplot2-book.org/individual-geoms.html')
+myggtext <- str_c(myggtext,collapse=', ')
+myggtext <- str_extract_all(myggtext,"g{1}e{1}o{1}m{1}\\_{1}\\w+")
+myggtext <- lapply(myggtext,unique)
+myggtext
+lapply(myggtext,length)
+```  
+  
+
+
+**4.** **Big data problem:** Download the sample of big data from canvas. Note that the data is in csv format and compressed for easy handling. You may need to uncompress it before using. Now answer the following questions. 
+
+   a) \label{select-few} Read the data and select only the columns that contains the word 'human'. Store the data in an object `dat`. Report first few rows of your data.  
+   
+```{r}
+
+fulldat <- fread("bigDataSample.csv")
+dat <- select(fulldat, contains('human'))
+head(dat)
+
+```  
+  
+   b) The data frame `dat` should have 5 columns. Rename the column names keeping only the last character of the column names. So each column name will have only one character. Report first few rows of your data now.  
+   
+```{r}
+dat <- setnames(dat, gsub("^[^_]*_[^_]*_[^_]*_","", names(dat) ))
+head(dat)
+```  
+  
+   c) Compute and report the means of each columns group by column b in a nice table.  
+   
+```{r}
+
+datmean <- group_by(dat,b) %>% summarise_all("mean")
+datmean
+```  
+  
+   d) Change the data into long form using id='b' and store the data in `mdat`. Report first few rows of data.  
+   
+```{r}
+library(reshape)
+
+mdat <- melt(dat, id="b")
+head(mdat)
+
+```  
+  
+   e) The data frame `mdat` is now ready for plotting. Generate density plots of value, color and fill by variable and facet by b.  
+   
+```{r}
+p <- ggplot(mdat, aes(x=value, color=variable)) + 
+  geom_density() + facet_wrap(~b)
+p
+```  
+  
+   f) The data set `bigDataSample.csv` is a sample of much bigger data set. Here we read the data set and then selected the desired column. Do you think it would be wise do the same thing with the actual larger data set? Explain how you will solve this problem of selecting few columns (as we did in question 6a) without reading the whole data set first. Demonstrate that showing your codes.  
+   
+```{r}
+# we don't want to have to load the whole data set and then delete the parts we don't need. It wastes type and memory that may be needed elsewhere. Instead we just load the desired columns when we read the data.
+cols <- colnames(fread("bigDataSample.csv",nrows=1))
+fulldat <- fread("bigDataSample.csv", select=grep("h{1}u{1}m{1}a{1}n{1}",cols,value = TRUE))
+head(fulldat)
+
+```  
+  
+

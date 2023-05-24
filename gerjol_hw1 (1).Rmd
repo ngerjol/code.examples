@@ -1,0 +1,327 @@
+---
+title: "STAT 4410/8416 Homework 1"
+author: "Gerjol, Nicholas"
+date: "Due on Sep 20, 2021"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align='center')
+```
+
+1. Based on your reading assignments answer the following questions:
+    a) What is data science?   
+    **Answer:**
+    Data Science is the Science of extracting meaningful (a data product) information from data. 
+    b) Explain with an example what you mean by data product.     
+    **Answer:**
+    A data product is the meaningful information we get from data. For example I am a high school math teacher. In one of my old school districts we had some software that took all of the data from the grade books in the school and created data products, such as graphs of grade distributions based on school or teacher. The organization of the data made it useful for us teachers to determine what teachers were doing well or how well our own instruction is. Those graphs, charts, and reports are all data products that take everything posted to our online system and puts out the data that is important for us to know. 
+    c) Carefully read Cleveland's paper shown in lecture 2 and discuss what he suggested about the field of statistics and data science. 
+        **Answer:**
+    Cleveland had six suggestions for the fields of statistics and data science. First is to require data be analyzed. Work cannot be entirely theoretical in data science. He brings up how important discoveries in statistics were generated from statistical application to other fields and uses that to justify that working with real data, with real intent, has to be a part of learning data science. 
+    Cleveland then suggests that more work be put into the development of different buildings of models for data. He discuses how this specification of data is the first of the two critical tasks, followed by estimation and distribution, and that while extensive work has gone into estimation and distribution of data, the development of tools for building models of data is very needed in the field.  
+    Third he brings up how data science has to combine statistics and computer science. Data scientists have to be part of the development of the tools they will use to create data products in order for innovation in the field to happen. Learning data science in conjunction with R seems to be achieving this goal. 
+    Fourth he discuses that data science has to develop the education of data science. Data science has to be developed as its own concentration of statistics, with its own pedagogy. 
+    Fifth he discuses that the application of statistics used to develop new tools and methods in other fields have to be turned inwards to analyze the tools and methods used in data science. By analyzing the statistics of the way statistics is done statisticians can improve the way they do statistics.  
+    Finally, he brings up how in order for innovation to happen in data science, data scientists need to learn the mathematical theories that can provide a framework for the new models and innovation to happen. 
+    Data science in Cleveland's mind requires a combination of statistics, data science, and mathematics and all are needed for the field to evolve. 
+    
+    d) Explain in a short paragraph how data science is different from computer science.   
+        **Answer:**
+        Data science is different from computer science in that data science is about using computers to extract meaninful information from data. Computer science can include creating software of websites for various uses, but those creations don't have to have any data to be created. Data science requires that data is being analyzed. In my definition of data science it is even possible to be data science without the use of computers at all. A data sciencest could hand create a data product, albiet much less effeciently then a computer would. 
+    e) What is data literacy? Is it important to be data literate in this modern world? Explain why or why not.  
+        **Answer:**
+        Data literacy is the ability to read, write, and understand data. A modern world has so much data availalbe to everyone thatit is important for everyone to become data literate. While it is possible to get through life without understanding data, a modern society works best if everyone learns this skill. In the united states being data literate is critical to being well informed in politics, which is vital for being a contributing member in a democratic society. Expanding from the united states, interacting and making decisions that affect other people, either democratic actions or individual actions, being able to understand the vast amounts of data at all of our fingerprints, having the skill to do it, and the understanding of why being data literate is important are all vital parts of living in a modern society. 
+    f) In his article, Donoho talked about the Common Task Framework. Explain what it is and why he mentioned it.  
+        **Answer:**
+        A common task framework is a situation where there is a publicly available common dataset, a group of people competing to infer some rule from that data, and a referee who determines who uses the inferered rules and scores them against each other. Donoho brings this up because its a great way in data science to allow for tested methods and rules to be created for a problem quickly and that it needs to be explicitly talked about in the training of data scientists.  
+    g) According to Donoho, what are the activities of greater data science?  
+    **Answer:**   
+    He had six activities: Data exploration and preperation, Data represenation and transformation, computing with data, data modeling, data visualization and presenation, and science about data science. 
+2. What are the very first few steps one should take once data is loaded onto **R**? Demonstrate them by loading tips data from http://www.ggobi.org/book/data/tips.csv.
+    
+    **Answer:**
+    Read the data, then use the head, tail, summary, str, and plot functions. 
+```{r}
+url <- "http://www.ggobi.org/book/data/tips.csv"
+dat <- read.table(url, header=T, sep=",")
+head(dat)
+tail(dat)
+summary(dat)
+str(dat)
+plot(dat)
+```  
+
+    
+3. In our **R** class, we learned about recursive functions that produce a sequence of numbers up to a given number, say $n$, as demonstrated with the following code:
+```{r}
+foo <- function(x) {
+  print(x)
+  if(x > 1) {
+    foo(x - 1)
+  }
+}
+
+moo <- function(x) {
+  if(x > 1) {
+    moo(x - 1)
+  }
+  print(x)
+}
+
+foo(3)
+moo(3)
+```  
+|         Explain why ``moo()`` prints 1 through 3 while ``foo()`` prints from 3 to 1.
+    
+    **Answer:**
+In function foo, the printing happens before the recursion does, so we start with x as 3. The function prints 3 then sends 2 to the function foo again which prints the number 2 before sending 1 to the function, which prints 1. X is now not greater than one, so the third iteration of foo ends, returning to the second iteration which ends, then the first iteration which ends.
+In the function moo, the printing happens after the recursion, so we have the first layer of the function with input 3, which starts a second layer of the function with input 2, which starts a third layer of the function with input 1, the third layer has X not greater than one, so it goes to print. The output of that print is 1, because we are in the third layer or iteration of the function which has input of 1, than that finishes and we return to the second iteration of the function, which prints 2 before finishing and returning us to the first layer, which still had input 3 and thus prints 3 third. 
+The thing here is that X isn’t some global variable that changes, we are sending numerical inputs, each layer or iteration keeps the same input in its x value. 
+
+
+4. The function `sqrt()` provides the square root of a non-negative number. Note what happens when you try `sqrt(-1)`. We want to create our own function that either finds the square root of a non-negative number or provides a custom message if we pass it a negative number.  
+    a) Create a new `R` function `getRootNotVectorized()` that will return the square root of any non-negative number and 'not possible' for a negative number. Further, `getRootNotVectorized()` should **only** successfully return 'not possible' if the negative value is the first element that you pass to the function. Otherwise, your function should return `NaN` for negative values. Demonstrate that your function produces the following outputs:  
+    \    
+    `getRootNotVectorized(4) = 2`  
+    `getRootNotVectorized(-4) = "not possible"`  
+    `getRootNotVectorized(c(-1, -4)) = "not possible"`  
+    `getRootNotVectorized(c(0, 1, -1, 4, -4)) = 0 1 NaN 2 NaN`.  
+    \   
+    Don't worry about the warning messages that accompany vector inputs with more than one element for now.
+       
+       
+       **Answer:**
+    ```{r}
+getRootNotVectorized<- function(x) {  
+  if(x<0) {
+    return("not possible")
+  }
+  y <- sqrt(x)
+  print(y)
+}
+getRootNotVectorized(4)
+getRootNotVectorized(-4)
+getRootNotVectorized(c(-1,4))
+getRootNotVectorized(c(0,1,-1,4,-4))
+```  
+    
+    b) Now create a second function `getRootVectorized()` that will return the square root of any non-negative number and 'not possible' for a negative number **regardless** of the number's position in a numeric vector of arbitrary length. Demonstrate that your function produces the following outputs:   
+    \   
+    `getRootVectorized(4) = 2`  
+    `getRootVectorized(-4) = "not possible"`  
+    `getRootVectorized(c(-1, -4)) = "not possible" "not possible"`  
+    `getRootVectorized(c(0, 1, -1, 4, -4)) = "0" "1" "not possible" "2" "not possible"`.    
+    \  
+        **Answer:**
+    ```{r}
+getRootVectorized<- function(x) {  
+  L <- length(x)
+  for (i in 1:L) {
+   if (i==1) {
+     if (x[1] < 0) {
+       ans <- "not possible"
+       }
+     if (x[1] >= 0) {
+       ans <- sqrt(x[i])
+       }
+   }
+   if (i > 1) {
+     if (x[i] < 0) {
+       ans <- c(ans,"not possible")
+       }
+     if (x[i] >= 0) {
+       ans <- c(ans,sqrt(x[i]))
+       }
+   }
+  }
+  print(ans)
+}
+getRootVectorized(4)
+getRootVectorized(-4)
+getRootVectorized(c(-1,-4))
+getRootVectorized(c(0,1,-1,4,-4))
+```  
+
+    c) Describe the differences in your code between `getRootNotVectorized()` and `getRootVectorized()` that allowed you to get the desired message output for any negative element of a vector in the latter function but not the former. Knowing whether or not functions that you use will handle vectors in the way that you expect will be very important as you continue working with `R`.
+        
+        
+        **Answer:**
+    The difference between my code is that the non vectorized function just looks at the first element in the vector input, whereas the vectorized function has to go through individually and check each element and compile the answers into a list. 
+    
+    d) Why do you see a difference between the output of the two following lines of code?  
+```{r, eval=FALSE}
+is.numeric(getRootVectorized(c(0, 1, 4)))
+
+is.numeric(getRootVectorized(c(0, 1, -4)))
+```
+    
+    
+    **Answer**
+In order to print “not possible” we have to change from a vector of numeric values to a list which is no longer numeric. 
+
+5. This problem will give you some practice with creating and manipulating vectors.
+    a) Using `seq()`, create a vector consisting of an arithmetic sequence of integers from 5 to 50 with a common difference of 5 stored in a variable called `mySeq`. **Report** `mySeq`.  
+    b) Describe how the different arguments in each of the three following commands changes the output of `rep()`: `rep(mySeq, 5)`, `rep(mySeq, each = 5)`, and `rep(mySeq, mySeq)`.  
+    c) Concatenate the sequence `1:14` to the end of the vector described by `rep(mySeq,mySeq)` and store
+the resulting vector in the same `mySeq` variable. **Report** the length of `mySeq`.  
+    d) Create a square matrix populated row-wise from your `mySeq` vector and store it in a variable called `sqMtrx`. **Report** the vector of values described by the column sums of `sqMtrx`
+    
+    
+    **Answer:**
+    
+    **a)**
+    ```{r}
+myseq <- seq(from = 5, to = 50, by = 5)
+myseq
+```  
+
+    
+    **b)**
+    
+    The second argument just being the number states the number of times to repeat the first argument. 
+    Adding the word each to the number in the second element repeats each element in the first arguemnt that number of times before moving the the second element. (so the first example is the sequence 5 times in a row form start the finish, the second is each element listed 5 times before going to the next element.) The third case takes each element and repeats it the number of times that element is. So 5 5's, 10 10's etc. So the number repeats the sequence that number of times, adding each takes each element and repeats it that number, and having two sequences takes the corresponding elements and repeats the first sequences element and repeats it the second sequences element number of times.
+    
+    **c)**
+    ```{r}
+myseq <- seq(from = 5, to = 50, by = 5)
+myseq <- c(rep(myseq, myseq),1:14)
+myseq
+```  
+
+    
+    **d)**
+    ```{r}
+sqMtrx <- matrix(myseq, nrow=sqrt(length(myseq)))
+sqMtrx
+colSums(sqMtrx)
+```  
+
+    
+    
+    
+
+6. Write a program that will do the following. Include your codes and necessary outputs to demonstrate your work.  
+    a) Generate 350,000 random numbers from a gamma distribution with `shape = 2` and `scale = 3` and store these numbers in a vector called `myVector`. **Report** a histogram of the numbers you just generated.  
+    b) Convert `myVector` into a matrix with 5,000 rows and assign it to an object called `myMatrix`. **Report** the dimensions of `myMatrix`.  
+    c) Compute the row means of `myMatrix` and **report** a histogram of those row means.  
+    d) Explain why the two histograms you created in (6a) and (6c) have different shapes.  
+    
+        **Answer:**
+    
+    **a)**
+    ```{r}
+myvector <- rgamma(350000,shape=2, scale=3)
+    hist(myvector)
+```  
+
+    
+    **b)**
+    
+    ```{r}
+mymatrix <- matrix(myvector, nrow=5000)
+    dim(mymatrix)
+```  
+
+
+    
+    **c)**
+    ```{r}
+x <- rowMeans(mymatrix)
+    hist(x)
+```  
+
+    
+    **d)**
+By splitting the 350,000 elements into 5000 rows, we are taking 5000 samples of 350 random numbers generated by the gamma distribution. This number is large enough that the mean of these numbers should be close to the mean of the gamma distribution, which is always the shape multiplied by the scale, or in this case, three times two is 6. Central limit thereon can also be applied to explain why the second graph becomes the normal distribution, as as number of samples increases, averages converge to the normal distribution. 
+
+    
+    
+7. Perform the following reproducible procedure:  
+    a) Set a seed for the `R` random number generator using `set.seed()` and seed value 2019.  
+    b) Create a vector called `x` of 1,000 values from a normal distribution with mean 100 and standard deviation 20. **Report** the `summary()` of `x`.  
+    c) Create a second vector called `y` of 1,000 values from a normal distribution with mean 0 and standard deviation 4. **Report** the `summary()` of `y`.  
+    d) Create a data frame called `df` from your `x` and `y` vectors.  
+    e) Generate a scatterplot of `df`.  
+    f) **Report** the `tail()` of `df` as a nice table using `kable()`.   
+    
+        **Answer:**
+    
+    **a)**
+    ```{r}
+set.seed(2019)
+```  
+
+    
+    **b)**
+    
+    ```{r}
+x <- rnorm(1000,100,20)
+    summary(x)
+```  
+
+    
+    
+    **c)**
+    ```{r}
+y <- rnorm(1000, 0, 4)
+    summary(y)
+```  
+
+    
+    **d)**
+    ```{r}
+df <- data.frame(x,y)
+```  
+
+    
+    **e)**
+    ```{r}
+    scatter.smooth(df)
+```  
+
+    
+    **f)**
+    Kable isnt a function that I have, is it a typo for table or did I need to use the library/package to get it? I tried downloading a few packages but wasn't able to get it to work.
+    ```{r}
+table(tail(df))
+```  
+
+    
+    
+8. Based on our lecture notes, answer the following questions. Show your answer presenting the relevant `R` code.
+
+    a) We have a vector of values `x = c(2,4,5, "3.5")`. What would be the mode of the vector `x`? 
+    b) How do you load a package into `R`? Show that loading `ggplot2` package.
+    c) Missing values are shown as `NA` in `R`. How can you check if there is any missing values in a vector `y = c(3,5,8, NA, 6)`?
+    
+    
+        **Answer:**
+    
+    **a)**
+    Character
+    ```{r}
+x <- c(2,4,5, "3.5")
+    mode(x)
+```  
+
+    
+    **b)**
+  If you leave the input blank you get a list of every package you can download.
+    ```{r}
+install.packages("ggplot2", repos = "http://cran.us.r-project.org")
+```  
+
+    
+    **c)**
+
+    ```{r}
+y = c(3,5,8, NA, 6)
+    is.na(y)
+```  
+
+    
+    

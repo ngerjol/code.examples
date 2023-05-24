@@ -1,0 +1,370 @@
+---
+title: "STAT 4410/8416 Homework 2"
+author: "lastName firstName"
+date: "Due on October 7, 2021"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+opts_chunk$set(fig.align='center', message=FALSE, cache=TRUE)
+output <- opts_knit$get("rmarkdown.pandoc.to")
+if(!is.null(output)) {
+  if(output=="html") opts_chunk$set(out.width = '400px') else
+    opts_chunk$set(out.width='.6\\linewidth')
+}
+```
+**1.** The data set `tips` contains tip amounts for different party sizes as well as total bill amounts per payment. We can get the data from the reshape2 package as follows:
+
+```{r}
+library(reshape2)
+tips.dat <- tips
+```
+
+Now answer the following questions:
+
+  a. Compute the tip rate, dividing tip by total bill, and create a new column called `tip.rate` in the dataframe `tips.dat`. Demonstrate your results by showing the head of `tips.dat`.  
+
+```{r}
+tips.dat$tip.rate <-  tips.dat$tip/tips.dat$total_bill
+head(tips.dat)
+```
+
+  b. Draw a side-by-side violin plot of the tip rate for each party size. Order the party sizes by the median tip rate. Provide your code as well as your plot. Which party size is responsible for the highest median tip rate? 
+```{r}
+library(ggplot2)
+p <- ggplot(tips.dat, aes(x=factor(size), y=tip.rate)) + geom_violin() + stat_summary(fun=median, geom="point", size=2, color="red")
+sort(with(tips.dat, tapply(tip.rate, size, median)), decreasing = T)
+p
+```
+Party size 1 is responsible for the highest median tip rate.
+
+  c. Generate a similar plot to the one you created in question 2b for each day (instead of party size) and facet by sex and smoker. Is the shape of the violin plot similar for each faceted condition?  
+  
+```{r}
+p <- ggplot(tips.dat, aes(x=factor(day), y=tip.rate)) + geom_violin() + stat_summary(fun=median, geom="point", size=2, color="red") + facet_wrap(vars(sex, smoker))
+sort(with(tips.dat, tapply(tip.rate, size, median)), decreasing = T)
+p
+```
+The shapes of the plot look to have similarities between yes and no, but not much between female and male. 
+
+
+**2.** We can generate an $n$x$k$ matrix $M$ and a vector $V$ of length $k$ for some specific values of $n$ and $k$ as follows:
+```{r}
+set.seed(321)
+n <- 9
+k <- 5
+V <- sample(seq(50), size = k, replace = TRUE)
+M <- matrix(rnorm(n * k), ncol = k)
+```
+
+  a. Now, carefully review the following for-loop. Rewrite the code so that you perform the same job without a loop.  
+
+```{r}
+A <- M
+A <- t(t(A)/V)
+round(A, digits = 4)
+```
+    
+  b. Now do the same experiment for $n=900$ and $k=500$. Which runs faster, your code or the for-loop? Demonstrate this using the function `system.time()`.
+  
+```{r}
+
+F_loop <- function() {
+  set.seed(321)
+n <- 900
+k <- 500
+V <- sample(seq(50), size = k, replace = TRUE)
+M <- matrix(rnorm(n * k), ncol = k)
+
+  X <- M
+for(i in seq(n)) {
+  X[i, ] <- round(M[i, ] / V, digits = 4)
+}
+X
+}
+
+F_noloop <- function() {
+  set.seed(321)
+n <- 900
+k <- 500
+V <- sample(seq(50), size = k, replace = TRUE)
+M <- matrix(rnorm(n * k), ncol = k)
+
+  A <- M
+A <- t(t(A)/V)
+round(A, digits = 4)
+}
+
+system.time(F_loop())
+system.time(F_noloop())
+```
+
+  The function without a loop happened faster, as expected.
+  
+**3.** We want to generate a plot of US arrest data (USArrests). Please provide the detailed codes to answer the following questions.
+
+  a. Obtain USA state boundary coordinates data for generating a USA map using function `map_data()` and store the data in `mdat`. Display the first few rows of data from `mdat`, noticing that there is a column called `order` that contains the true order of the coordinates.  
+  
+  
+```{r}
+library(maps)
+mdat <- map_data("state")
+head(mdat)
+```
+    
+
+  b. \label{standardize-rate} You will find USA crime data in the data frame called `USArrests`. Standardize the crime rates and create a new column called `state` so that all state names are in lower case. Store this new data in an object called `arrest` and report the first few rows of `arrest`.  
+  
+  
+```{r}
+arrest <- scale(USArrests)
+state <- tolower(state.name)
+arrest <- cbind(arrest, state)
+head(arrest)
+```
+    
+
+  c. \label{order-data} Merge the two data sets `mdat` and `arrest` by state name. Note: merging will change the order of the coordinates data. So, order the data back to the original order and store the merged-ordered data in `odat`. Report the first few rows of data from `odat`.
+
+
+```{r}
+
+odat <- merge(mdat,arrest, by.x="region", by.y="state")
+odat <- as.data.frame(odat)
+odat <- odat[order(odat[,5]),]
+head(odat)
+
+```
+
+    
+
+  d. All the columns of `odat` are not necessary for our analysis. So, obtain a subset by selecting only the columns long, lat, group, region, Murder, Assault, UrbanPop, and Rape. Store the data in `sdat` and report the first few rows.
+  
+  
+```{r}
+sdat <- subset(odat, select = c(long, lat, group, region, Murder, Assault, UrbanPop, Rape))
+head(sdat)
+```
+    
+  e. Melt the data frame `sdat` with id variables long, lat, group, region. Store the molten data in `msdat` and report the first few rows of data.
+  
+  
+
+```{r}
+msdat <- melt(sdat, id=c("long","lat","group","region"))
+head(msdat)
+```
+    
+
+  f. \label{plot-crime} The molten data frame `msdat` is now ready to be plotted. Create a plot showing the USA state map, fill by value, and `facet_wrap` with variable. Please don't add any legend and make sure that facetting labels are identified so that we can compare the facetted plots.
+  
+  
+
+```{r}
+library(maps)
+library(scales)
+
+map <- ggplot(msdat, aes(x=long, y=lat, fill=value, group=group)) + facet_wrap(msdat$variable)+  geom_polygon(fill="grey65", colour = alpha("white", 1/2), size = 0.2)+ theme_bw()
+map + scale_fill_gradient(low="white", high="grey20")
+
+```
+    
+
+  g. Now examine the plot you have generated in question (f) and answer the following questions based on what you see in the plot.
+  
+    \   
+    i. For each crime, name two states with its highest rate.   
+    ii. Do you think a larger urban population is indicative of a higher murder rate? Why or why not?  
+rape: nevada and california
+murder: georgia and missisipi
+assault: north carolina and florida
+
+It is not indicative, as a state like missisipi has a lower urban pop but is the second highest murder rate.
+
+  
+  h. In question (3b) we standardized the crime rates. Why do you think we did this? Explain what would happen if we did not standardize the data.
+
+We did this because the number of arrests for each crime is different orders of magnitude. Assault happening over 10 times more then anything else would dominate the visual space of whatever form we graph it in.
+    
+  i. In question (3c) we ordered the data after merging. Why do you think we had to do this? Explain what would happen if we did not.
+  
+One of the biggest reasons is that we use head to check our data. With the data not in order we cannot see if everything changed correctly.
+
+**4.** Life expectancy data for four countries can be obtained from the world bank database found at
+[github](http://mamajumder.github.io/data-science/data/life-expectancy.csv). It contains life expectancy in years for different genders. Now answer the following questions. 
+
+  a. Read the data from the above link and display the first few rows of data. 
+
+```{r}
+url <- "http://mamajumder.github.io/data-science/data/life-expectancy.csv"
+life.dat <- read.table(url, header=T, sep=",")
+head(life.dat)
+```
+    
+  b. \label{life} Generate a plot showing trend lines of life expectancy by year. Color them by sex and facet by country. Include your code with the plot.
+
+```{r}
+life.datA <- subset(life.dat, select = -c(India,Pakistan,USA))
+life.datB <- subset(life.dat, select = -c(Bangladesh,Pakistan,USA))
+life.datC <- subset(life.dat, select = -c(Bangladesh,India,USA))
+life.datD <- subset(life.dat, select = -c(Bangladesh,India,Pakistan))
+life.datA$country = 1
+life.datB$country = 2
+life.datC$country = 3
+life.datD$country =4
+colnames(life.datA) <- c("year","sex","life","country")
+colnames(life.datB) <- c("year","sex","life","country")
+colnames(life.datC) <- c("year","sex","life","country")
+colnames(life.datD) <- c("year","sex","life","country")
+life.dat <- rbind(life.datA,life.datB,life.datC,life.datD)
+ggplot(life.dat,
+       aes(x=year,y=life, color=sex)) +
+  geom_point() + 
+  geom_smooth(method="lm", se=F) +facet_wrap(life.dat$country)
+```
+    
+  c. Explain what interesting features you noticed in the plot you made in question 4b.
+The USA was the only country where the different sexes had different life expectancy.
+    
+**5.** For the following questions please use data frame `tips` 
+
+  a. \label{bar} Create a bar chart that shows the average tip by day.
+
+```{r}
+avgtips = aggregate(x = tips$tip, by = list(tips$day), FUN=mean)
+colnames(avgtips) <- c('Day', "Average_tip")
+```
+    
+  b. Compute the average tip, total tip, and average size grouped by smoker and day. i.e.,  For each combination of smoker and day you should have a row of these summaries. Report these results in a nice table.
+
+```{r}
+avgtipsd = aggregate(x = tips$tip, by = list(tips$day,tips$smoker), FUN=mean)
+colnames(avgtipsd) <- c('Day','smoker', "Average_tip")
+totaltipd = aggregate(x = tips$tip, by = list(tips$day,tips$smoker), FUN=sum)
+colnames(totaltipd) <- c('Day','smoker', "total_tip")
+avgsized = aggregate(x = tips$size, by = list(tips$day,tips$smoker), FUN=mean)
+colnames(avgsized) <- c('Day','smoker', "Average_size")
+tipadd <- subset(totaltipd, select = c(total_tip))
+sizeadd <- subset(avgsized, select = c(Average_size))
+totaltipd <- as.data.frame(totaltipd)
+tipadd <- as.data.frame(tipadd)
+sizeadd <- as.data.frame(sizeadd)
+avgtipsd$total_tip <- tipadd
+avgtipsd$Average_size <- sizeadd
+avgtipsd
+```
+    
+  c. \label{bar-facet} Create a bar chart that shows average tip by day, faceted by smoker.
+
+```{r}
+ggplot(avgtipsd)+facet_wrap(avgtipsd$smoker)
+```
+    
+  d. In questions 5a and 5c, we plotted a summary of our data which does not show us the whole picture. In practice, we would like to see all of the data. What plot do you suggest would serve a similar purpose to the one in question 5c? In other words, what would be a better plot to show than tips by day, facetted by smoker? Please produce this plot and include your code.
+  
+```{r}
+'The best plot would be faceted by a grid, taking the base tips and faceting it by every possible combination of factors'
+```
+    
+**6.** We have the following data set:
+
+```{r}
+myDat <- read.csv("http://mamajumder.github.io/data-science/data/reshape-source.csv")
+kable(myDat)
+```
+
+We want to reshape the data and produce the following output:
+
+| player|variable |   A|   B|   C|
+|------:|:--------|---:|---:|---:|
+|      1|walking  | 408| 402| 386|
+|      1|cycling  |  43|  31|  41|
+|      2|walking  | 373| 404| 422|
+|      2|cycling  |  53|  41|  30|
+|      3|walking  | 403| 393| 422|
+|      3|cycling  |  25|  46|  48|
+
+Provide code that will produce this desired output. Demonstrate your answer by displaying the output as well.
+
+```{r}
+myDat <- as.data.frame(myDat)
+myDat <- subset(myDat, select = -c(1))
+myDatA <- subset(t(myDat), select = -c(4,5,6,7,8,9))
+myDatB <- subset(t(myDat), select = -c(1,2,3,7,8,9))
+myDatC <- subset(t(myDat), select = -c(1,2,3,4,5,6))
+myDat <- rbind(myDatA,myDatB,myDatC)
+playerorder <- c(1,1,2,2,3,3)
+po <- t(t(playerorder))
+'cbind(po,myDat)'
+kable(myDat)
+```
+    
+**7.** **Ordering the factor** In class, we have seen how to order factors. Suppose we have the following data about a certain value obtained during particular months of the year;
+
+```{r}
+month <- c("July", "June", "September", "May", "October", "August")
+value <- c(35, 72, 14, 23, 60, 105)
+df <- data.frame(month, value)
+```
+
+Now please do the following:  
+
+  a. Convert the month column of dataframe `df` into a factor column. Demonstrate that it is indeed converted into a factor column.  
+
+```{r}
+df$month <- factor(df$month)
+is.factor(df$month)
+```
+    
+  b. Now generate a bar chart showing the value for different months.  
+
+```{r}
+
+```
+    
+  c. Notice the order of the levels of the months is not natural, instead the plot shows the dictionary order. Now, order the bars according to the natural order of the levels of the class (months of the year as they appear in chronological order) and regenerate the bar graph.  
+  
+```{r}
+
+```
+    
+**8.** Install the `babynames` package with `install.packages()`. This package includes data from the Social Security Administration about American baby names over a wide range of years. Generate a plot of the reported proportion of babies born with the name Angelica over time. Do you notice anything odd about the plotted data? (Hint: you should) If so, describe the issue and generate a new plot that adjusts for this problem. Make sure you show both plots along with all code that was used to generate them.
+x
+The graph jumps from really big to really small numbers, because we didn't seperate by gender. 
+
+```{r}
+baby.dat <- babynames::babynames
+ggplot(subset(baby.dat, name %in% c("Angelica")),aes(x=year,y=n)) +geom_line(aes(color="white"))
+ggplot(subset(baby.dat, name %in% c("Angelica")),aes(x=year,y=n)) +geom_line(aes(color = sex))
+
+```
+    
+**9.** **Bonus (2 points)** for undergraduates and mandatory for graduate students. Suppose we have a vector of data as follows:
+
+```{r}
+myVector <- c(-15, -10, -5, 0, 5, 10, 15, 20)
+```
+
+  a. \label{q.tapply} Using the function `tapply()`, separately compute the means of the first three values, next two values, and the last three values of `myVector`. Show your code. Your result should be: -10.0, 2.5, 15.0.
+
+```{r}
+ind <- list(c(1,1,1,2,2,3,3,3))
+tapply(myVector,ind,mean)
+```
+    
+  b. Now repeat question 9a, but instead of computing means, you will compute the sum of squares. Again, show your code. Your result should be: 350, 25, 725.  
+
+```{r}
+myvectorsquared <- myVector^2
+tapply(myvectorsquared,ind,sum)
+```
+    
+
+
+
+
+

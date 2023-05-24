@@ -1,0 +1,198 @@
+---
+title: "STAT 4410/8416 Homework 5"
+author: "Gerjol, Nicholas"
+date: "Due on Nov 30, 2021"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+opts_chunk$set(fig.align='center', dpi=100, message=FALSE, warning=FALSE, cache=TRUE)
+output <- opts_knit$get("rmarkdown.pandoc.to")
+if(!is.null(output)) {
+if (output=="html") opts_chunk$set(out.width = '400px') else
+  opts_chunk$set(out.width='.6\\linewidth')
+}
+```
+
+**1.** **Working with Databases:** Please follow the instruction below before answering the questions:
+
+  • Install the package sqldf using install.packages('sqldf')
+  • Import the library using library('sqldf')
+  • Read the file https://raw.githubusercontent.com/dsindy/kaggle-titanic/master/data/train.csv and store it in an object called titanic
+  
+We can now start writing SQL Script using SQLDF library right inside R. See example below:
+```{r}
+library(sqldf)
+library(data.table)
+titanic <- fread("https://raw.githubusercontent.com/dsindy/kaggle-titanic/master/data/train.csv")
+sqldf("SELECT passengerid, name, sex
+FROM titanic
+limit 5", drv="SQLite")
+```
+Answer the following questions. Write SQL Script where applicable.
+   a) What does the following command do in MySQL?
+         i) show databases;
+```{r}
+#Show data bases lists all the databases accessible by MySQL
+```
+         
+         ii) show tables;
+```{r}
+#Shows the data tables inside the databases accessible by MySQL
+```
+         
+Write SQL script to answer the following questions based on titanic data. Display the results of your
+script.
+i. What is the average age of passengers who survived? Group the data by Sex. Display only the
+column Sex, AverageAge
+```{r}
+sqldf("select sex, avg(age) as AverageAge from titanic where Survived = 1 group by sex
+", drv="SQLite")
+```
+
+
+ii. What is the percentage of passengers who survived in each Passenger Class or Pclass? Group
+the data by Sex. Display Pclass, Sex, percentage value.
+```{r}
+#sqldf("select sex, Pclass, sum(Survived) where Survived = 1 / sum(survived) as percentagevalue from titanic group by sex, Pclass", drv="SQLite")
+```
+iii. What is the average age of all the passenger (survived and not survived)? Group the data by
+Pclass, Sex, Survived. After that use ggplot to generate a line plot to show average age vs
+pclass, facet by sex and color it by survived.
+```{r}
+library(ggplot2)
+sqldf("select avg(age) as AverageAge from titanic
+", drv="SQLite")
+plotdat <- sqldf("select Pclass, sex, Survived, avg(age) as AverageAge from titanic group by Pclass, Sex, Survived
+", drv="SQLite")
+plotdat
+g <- ggplot(plotdat, aes(x=Pclass, y = AverageAge), color = Survived) + geom_line() + facet_wrap(~Sex)
+g
+```
+iv. What is the name, age, sex and pclass of the 5 oldest and 5 youngest persons who died?
+```{r}
+info <- sqldf("select name, age, sex, Pclass from titanic where survived = 0  order by age desc limit 5
+", drv="SQLite")
+info
+info <- sqldf("select name, age, sex, Pclass from titanic where survived = 0  order by age asc limit 5
+", drv="SQLite")
+info
+
+```
+
+v. On average which Passenger Class is more expensive?
+```{r}
+info <- sqldf("select Pclass, avg(fare) as avgfare from titanic group by Pclass order by avgfare desc limit 1
+", drv="SQLite")
+info
+```
+
+c. Notice the following R codes and explain what it is doing.
+
+```{r}
+library(RSQLite)
+conn <- dbConnect(RSQLite::SQLite(), "titanicDB")
+dbWriteTable(conn, name = "titanic", value = titanic, overwrite=TRUE)
+dbListTables(conn)
+#The code is connecting to the titanic data base then renaming the titanicdb as "titanic"
+```
+d. Use package dplyr to obtain the same result as you did in 1b(iii) above. For this use the connection
+string conn and the function tbl(). Store the result in an object called meanAge.
+```{r}
+library(dplyr)
+#conDplyr = src_mysql(dbname = "trainingDB", user = "training", password = "training123", host = "localhost")
+# meanAge <- conDplyr %>%
+#   tbl("titanic") %>%
+#   select(avg(age)) %>%
+#   collect() 
+#I commented this because I'm still unable to get mysql on my machine so localhost connects to nothing
+
+```
+
+e. Show the SQL query to create meanAge in 1(d) using the fiunction show_query()
+
+2. Extracting twitter data: In this problem we would like to extract data from twitter. For this refer
+to the documentation in the e following link.
+https://github.com/geoffjentry/twitteR/
+a. Twitter API: Set up twitter API using any of the following methods. Make sure you installed all the
+packages as mentioned in the class.
+Method 2: If you don’t like creating an account with twitter and going through all the trouble, you can use
+my keys (ssh, don’t tell anyone). For this download the hw5-twitter-auth file from blackboard and load it
+as follows.
+```{r}
+load("hw5-twitter-auth")
+library(twitteR)
+setup_twitter_oauth(api_key,api_secret,access_token, access_token_secret)
+
+```
+b. Now search twitter messages for “data science job”. Display few job informations.
+```{r}
+dsTweet <- searchTwitter("data science job")
+dfTweet <- twListToDF(dsTweet)
+tweetText <- dfTweet$text
+head(tweetText)
+```
+
+c. Search 300 tweets using the hash tag #chess and save them in an object called rTweets. Show the
+top 7 sources of tweets (such as android or iphone) in a ordered bar plot.
+```{r}
+library(ggplot2)
+rTweets <- searchTwitter("#chess", n=300)
+sources <- sapply(rTweets, function(x) x$getStatusSource())
+sources <- gsub("</a>", "", sources)
+sources <- strsplit(sources, ">")
+sources <- sapply(sources, function(x) ifelse(length(x) > 1, x[2], x[1]))
+source_table = table(sources)
+df <- data.frame(names(source_table),source_table)
+ggplot(df[df$Freq>8,], aes(reorder(sources,Freq),Freq)) +
+  geom_bar(stat="identity") + coord_flip()
+```
+
+d. Notice that the object rTweets is a list. Convert it into a data frame using function twListToDF and
+store it in an object called dTweets. Display some data from dTweets.
+```{r}
+dTweets <- twListToDF(rTweets)
+head(dTweets)
+```
+
+e. dTweets has a column showing the time the tweet was created. Generate a plot showing number of
+tweets on each of the hours. Add a smooth line overlaid on your plot.
+```{r}
+library(lubridate)
+library(data.table)
+dTweets$created <- ceiling_date(dTweets$created, unit="hour") 
+dTweets$num_tweets <- 1
+df = subset(dTweets, select = c(created, num_tweets))
+test <- aggregate(. ~ created, df, sum)
+
+g <- ggplot(test, aes(x=created, y=num_tweets)) + geom_line()
+g
+```
+
+f. Arrange the dataframe dTweets based on the retweetCount. While doing this select only columns
+text, screenName, retweetCount. Store the data in a object called mostTweets. Display five texts
+that are most retweeted.
+```{r}
+head(dTweets)
+dTweets <- as.data.table(dTweets)
+testsort <- dTweets[order(-retweetCount),]
+head(testsort)
+mostTweets <- subset(testsort, select = c(text, screenName, retweetCount))
+head(mostTweets, 5)
+```
+
+g. Generate a bar chart showing top 15 screen names and count of retweets from mostTweets. Order the
+bars based on the retweet counts.
+```{r}
+topTweets <- head(mostTweets, 15)
+bartweets <- subset(topTweets, select = c( screenName, retweetCount))
+b <- ggplot(bartweets, aes(x=screenName, y=retweetCount)) + geom_bar(stat = "identity") + coord_flip()
+b
+```
+
+
+
