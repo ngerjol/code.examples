@@ -1,0 +1,358 @@
+---
+title: "Understanding the Student Debt Crisis Today and Its Impacts for the Future"
+author:
+- Nick Gerjol
+- Delaney Kryiss
+- Chris Serrano
+- Dan Shield
+date: "`r format(Sys.Date(), '%A, %B %d, %Y')`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Abstract
+
+Student debt has been a topic of recent discussion, impacting approximately 44 million
+Americans. Americans owe over 1.5 trillion dollars in student loans, with the average borrower
+owing over 30,000 dollars in student debt. Between a push to try to gain a higher standard of
+living and a push by middle and high schools for college, young Americans pursue higher
+education more than ever. This trend has resulted in young Americans taking on debt they are
+unprepared to deal with, resulting in a deeper student loan debt crisis. Our team plans to
+analyze data and look for correlations in our data to attempt to understand the crisis and how it
+will impact Americans in the future.
+
+
+# 1. Introduction
+  The topic of student loan debt continues to be an issue of great concern in the United States today. Seven out of ten college graduates leave school with loan debt and according to the Consumer Financial Protection Bureau, over 1 in 4 borrowers are delinquent or have defaulted on their student loan debt. In addition, acquiring student loan debt has a great impact on credit scores, ability to purchase a home, or obtain a car loan. This report seeks to explore the aspects of student loan debt over the years including increase in cost of post-secondary education, the demographics of students who apply for loans, and the rate in which the loan is paid off.
+_maybe add something to close the introduction_?
+
+## 1.1 Document reproducability
+  This report is constructed is prepared using the R [R-base] package knitr [R-knitr]. This project may be imported into the RStudio environment and compiled by researchers wishing to reproduce this work for future datasets.
+
+# 2. About the data
+  The data primarily used in this analysis is derived from the Federal Student Aid website, an official website of the United States government. According to FSA, they are “responsible for directly managing or overseeing an outstanding federal student loan portfolio comprised of billions of dollars in Title IV loans”. The portfolio includes Direct Loans, Federal Family Education Loans (FEEL), and Perkins Loans with outstanding balances and is organized by age, debt size, location, and school type.
+  \
+  Data was also used from the [National Center for Education Statistics](nces.ed.gov). NCES is the primary federal agency for collecting and analyzing data related to eduction.[1]
+
+## 2.1 Preparing the data
+Many of the spreadsheets accessible from government websites contain much extraneous data. In order to make it more easily accessible from R, ranges representing individual tables were exported as .csv.
+
+Once exported, all columns were strings. Most of the data is numeric, so we must convert the string columns to numeric columns. The symbols '$' and ',' must be removed from the strings before they can be converted to numbers.
+
+In some data, the 'Year' column show the school year, 2010-11, for example. For a cleaner, more readable label, we will drop the hyphen and everything following. So 2010-11 will become 2010.
+
+## 2.2 Shortcomings
+
+Our various data sources may be dated or incomplete in some instances. This is a dilemma that is hard to work around because student loan information can be viewed as sensitive private information. Furthermore, we struggled to find one consolidated data and instead opted to use various methods with various datasets to analyze the problem. Overall, we believe our methodology has allowed for a more broadened view of the situation. We can easily identify and investigate conflicting information; this allows for an overall better report. 
+
+# 3. Methods
+
+We would like to gather an analyze as much student loan data as possible to be able to predict how severe we can expect the situation to be in the coming years. Although recent events can be deemed abnormal, we plan to take what we learn and provide a student debt level projection for both the United States as a whole and the average student.
+
+# 4. Results
+
+## 4.1 Overview
+College costs are increasing. Whether public or private, for-profit or non-profit, the cost of post-secondary education has been rising for years. Below are charts displaying the historical cost of college in as well as the median personal income at the time, both adjusted to 2020 dollars.
+
+```{r include=FALSE}
+library(dplyr)
+library(stringr)
+library(ggplot2)
+
+fn <- function(x) as.numeric(str_replace_all(x, ",|\\$", ""))
+
+allColleges <- read.csv("all.csv")
+names(allColleges)[1] = "Year"
+
+allColleges <- allColleges %>%
+  select(1:13) %>%
+  mutate(Year = str_replace_all(Year, "-.*$", "")) %>%
+  mutate(across(1:13, fn)) %>%
+  filter(!is.na(Year))
+
+medianIncome <- read.csv("RealMedianPersonalIncome.csv")
+names(medianIncome) <- c("Year", "medianIncome")
+
+medianIncome <- medianIncome %>%
+  mutate(Year = as.numeric(format(as.Date(Year), "%Y")))
+
+data <- left_join(medianIncome, allColleges, by="Year")
+
+```
+
+### Tuition, Fees, Room and Board for all colleges
+```{r echo=FALSE, warning=FALSE}
+library(reshape2)
+data2 <- melt(data, id=1, measure=c(2:5))
+
+ggplot(data2, aes(x=Year, y=value, color=variable)) +
+  geom_line() +
+  xlab("Year") + ylab("Amount") + labs(caption="Figure 1: Median Income vs Total Tution, Fees, Room and Board") +
+  scale_color_discrete(name="",
+                       breaks=names(data)[2:5],
+                       labels=c("Median Income", "All Schools", "4-Year Schools", "2-Year Schools"))
+```
+
+We can remove the Room and Board costs associated with college, and look at tuition and fees alone. They represent the largest increases in the cost of college.
+
+### Tuition and Fees only
+```{r echo=FALSE, warning=FALSE}
+d2 <- melt(data, id=1, measure=c(2,6:8))
+
+ggplot(d2, aes(x=Year, y=value, color=variable)) +
+  geom_line() +
+  xlab("Year") + ylab("Amount") + labs(caption="Figure 2: Median Income vs Tution and Fees only") +
+  scale_color_discrete(name="",
+                       breaks=c(names(data)[2], names(data)[6:8]),
+                       labels=c("Median Income", "All Schools", "4-Year SChools", "2-Year Schools"))
+```
+
+And the situation is even worse for private schools. The increases associated with receiving and education from an elite institution almost requires a student to take large student loans.
+
+```{r echo=FALSE, warning=FALSE, include=FALSE}
+privateColleges <- read.csv("Private-ForProfit.csv")
+names(privateColleges)[1] = "Year"
+
+privateColleges <- privateColleges %>%
+  select(1:13) %>%
+  mutate(Year = str_replace_all(Year, "-.*$", "")) %>%
+  mutate(across(1:13, fn)) %>%
+  filter(!is.na(Year))
+
+privateData <- privateColleges %>%
+  select(1:4);
+
+privateData <- left_join(medianIncome, privateData, by="Year");
+```
+```{r echo=FALSE, warning=FALSE}
+d3 <- melt(privateData, id=1)
+
+ggplot(d3, aes(x=Year, y=value, color=variable)) +
+  geom_line() +
+  xlab("Year") + ylab("Amount") + labs(caption="Figure 3: Median Income vs Private School Total Expenses") +
+  scale_color_discrete(name="",
+                       breaks=names(privateData)[2:5],
+                       labels=c("Median Income", "All Private Schools", "4-Year Private Schools", "2-Year Private Schools"))
+
+#ggplot(melt(privateData, id="Year"), aes(x=Year, y=value, group=variable)) +
+#  geom_line() +
+#  labs(title="Private School Tuition, Fees, Room, and Board")
+```
+
+### 4.2 Data size. 
+
+Here we first examine the student debt broken down by different repayment plans. Figures 4 and 5 below show the total amount of Dollars outstanding in Billions and the number of borrowers in Millions over the more recent years. These numbers include borrowers and amounts that are currently on a repayment plan, having payments deferred, or are in forbearance. 
+
+```{r echo=FALSE, fig.asp=0.8, fig.width=3, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(lubridate)
+library(dplyr)
+my_data2 <- read.csv("repaymentbreakdown-2.csv")
+my_data2$year <- yq(my_data2$year)
+my_data2total <- subset(my_data2, Type =="total")
+p <- ggplot(data = my_data2total, aes(x =year, y = Dollars_Outstanding)) 
+p + geom_line() + labs(caption = "Figure 4: Dollars outstanding on\npayment plans in Billions")
+q <- ggplot(data = my_data2total, aes(x =year, y = Recipients_in_Millions)) 
+q + geom_line() + labs(caption = "Figure 5: Recipients of student\nloans on payment plans in ilMlions")
+
+```
+
+
+The Interesting comparison to note here is the relationship between the total dollars outstanding and the total recipients. While the total dollars outstanding of debt is increasing at a steady rate, the amount of recipients does not grow at the same rate. One conjecture is that this is attributed to both the idea that the amount of money students are taking in loans out is increasing over time and that borrowers are not able to pay off their loans like borrowers have in the past. We can break these totals down as seen in Figures 6 and 7 below to try and figure out more.
+
+
+```{r fig.asp = 0.5,echo=FALSE, warning=FALSE}
+my_data2plans <- subset(my_data2, Type !="total")
+s <- ggplot(data = my_data2plans, aes(x =year, y = Recipients_in_Millions, color=Type)) 
+s + geom_line() + labs(caption = "Figure 6: Amount of outstanding loan debt in billions by repayment plan")
+r <- ggplot(data = my_data2plans, aes(x =year, y = Dollars_Outstanding, color=Type)) 
+r + geom_line()   + labs(caption = "Figure 7: amount of recipients of student loans in millions by repayment plan")
+
+```
+
+
+
+Here we get a breakdown of the total debt by student loan type. First looking at the amounts of recipients in figure 6, only the income based loan plans seem to be growing in amount of recipients, whereas the fixed and variable interest rate loans number of recipients stayed steady. In contrast, figure 7 shows every single type of repayment plan increased. Looking at the most common loan plan, the fixed interest rate with less then 10 years, we can see that loan debt is increasing across the board, even though the number of recipients grows slower and slower each year. Most concerning is that the pay is you earn (PAYE) plan and the alternative student loans (ALT) are not tapering off like the other two income based loans, and the amount of money those loan borrowers are taking out was increasing quite rapidly before the pandemic. If borrowers keep taking out alternative loans at the same rate, in 9 years it will catch up to the fixed 10 year total amount borrowed distributed among approximately half as many borrowers. 
+ 
+ 
+```{r echo=FALSE, warning=FALSE}
+my_data2$Average_loan_per_person_in_thousands <- (((my_data2$Dollars_Outstanding))/((my_data2$Recipients_in_Millions)))
+v <- ggplot(data = my_data2, aes(x =year, y = Average_loan_per_person_in_thousands, color=Type))
+v + geom_line() + labs(caption = "Figure 8: Average loan per person in thousands on each payment plan")
+```
+
+In figure 8 above, dividing the two amount of outstanding loans by the number of borrowers, we can get the average amount a recipient has borrowed each year per payment plan in thousands. Here we see the average amount of debt taken out per person has almost doubled from just over 20 thousand to just over 40 thousand over the past 7 years. Also interesting here is that the different plans are spreading out creating more distinction between how much money the average person on that plan has to repay.The under 10 year loans have the smallest outstanding balance per person as with smaller loans borrowers won't need as much time to pay them off. But what is really interesting is the growth of the PAYE, ALT, and income contingent plans. What used to be a fairly middle of the road payment plans, more and more people are taking out loans that are based on income or are from private vendors. It could be that federal loans aren't awarding people enough money or that private loans are becoming more competitive than the federal backed loans, or more likely that the 10 to 15% of the income maximum payments that is attributed to these income based loans is actually cheaper now then a percentage rate due to the increasing costs of education as shown in section 4.1 and how the average income nationally has not risen to match it.  
+
+### Dollars Outstanding in Billions and Recipients in Millions by amount of individual debt.
+```{r fig.asp = 0.8, fig.width = 3,echo=FALSE, warning=FALSE}
+my_data4 <- read.csv("debtsize-2.csv")
+my_data4$Year <- yq(my_data4$Year)
+my_data4total <- subset(my_data4, Type =="total")
+p <- ggplot(data = my_data4total, aes(x =Year, y = Dollars_Outstanding)) 
+p + geom_line()   + labs(caption = "Figure 9: Dollars outstanding\nof student loans in billions")
+q <- ggplot(data = my_data4total, aes(x =Year, y = Recipients_in_Millions)) 
+q + geom_line() + labs(caption = "Figure 10: Recipients\nof student loans in millions")
+
+
+```
+
+Figures 9 and 10 above show the totals now of all outstanding student loan borrowers. The biggest addition that this distinction adds that wasn't in the previous figures is the number of people who have defaulted on student loans.The most interesting thing we see here is that in comparing figure 9 to Figure 5, there seem to be about 20 million recipients not on payment plans! We also see the number of recipients actually stays fairly stagnate, growing within only a a million recipients over the past 4 years. 
+
+In figures 11 and 12 below we take the breakdown of how much debt recipients have to try and gain some understanding in the information we see above. Interesting about these graphs is that while the vast majority of borrowers seem to be in the lower end of the amount borrowed, its the borrowers that have large debt sizes that are represented in the total dollars outstanding. Interesting to note is that again we see the total amount of debt increasing as the number of borrowers stagnates. Most of this increase looks to be isolated to the 80 thousand dollars and above. From this we can see that most of the growth in student is from these giant loan debts. A 300 billion dollar increase focused in the groups that have over 100 thousand dollars alludes to people stuck in debt that they cannot get out of. We can see in figure 13 that the average loan value in these ranges are around 140 thousand and 300 thousand. The US Census has the median income as $67,521 in 2020, with a 10% maximum income payment plan, that gives a maximum payment of 6752.10 dollars. This payment would only cover the interest of these 300 thousand loans with an interest rate of 2.25 percent, which is already almost half a percent lower then the national average for undergraduates. 
+
+
+```{r fig.asp = 0.5,echo=FALSE, warning=FALSE}
+my_data4plans <- subset(my_data4, Type !="total")
+r <- ggplot(data = my_data4plans, aes(x =Year, y = Dollars_Outstanding, color=Type)) 
+r + geom_line()   + labs(caption = "Figure 11: Amount of loans in billions per loan size")
+s <- ggplot(data = my_data4plans, aes(x =Year, y = Recipients_in_Millions, color=Type)) 
+s + geom_line() + labs(caption = "Figure 12: amount of recipients of loans in millions per loan size")
+```
+
+
+```{r echo=FALSE, warning=FALSE}
+my_data4$Average_loan_per_person_in_thousands <- (((my_data4$Dollars_Outstanding))/((my_data4$Recipients_in_Millions)))
+w <- ggplot(data = my_data4, aes(x =Year, y = Average_loan_per_person_in_thousands, color=Type))
+w + geom_line() + labs(caption = "Figure 13: Average loan per person in thousand by loan size")
+```
+
+
+From this we can see that this 300 billion dollar increase of student loans in the last 4 years almost entirely seems to come from borrowers with giant outstanding balances where the interest rate is more then 10% the national income. This gives us an increasing number of people who cannot hope at all to pay off their student debt, either taking it to their grave or having it be forgiven through a loan forgiveness program. 
+
+## 4.3 Demographics
+
+We examined the demographics of the students who obtain studnet loan debt. Figure 14 illustrates the total student loan balances in the United States from the years 2004-2017 separated by age group. Observe that as the years go by, the balance (in billions) for every age group increases. It is expected that the age group 'under 30' would have the most student debt due to that particular age group being the most common demographic of college institutions, but what is particulary interesting is the age group '30-39' surpasses the 'under 30' age group around 2013-2014. This may entail that more adults ages 30-39 are attending college later in life, but are still accuring more student loans than other age groups. 
+```{r echo=FALSE}
+library(ggplot2)
+library(reshape2)
+library(readxl)
+age1 <- read_excel("age.xlsx")
+adf<- melt(age1, id.vars="year")
+
+ageplot<-ggplot(adf, aes(x = year, y = value, colour = variable)) + geom_line()
+
+ageplot + labs(x="Year",y="Balance in Billions")+geom_line() + labs(caption = "Figure 14: Total Student Loan Balances (in billions) by Age Group from 2004-2017")
+```
+
+Narrowing the data to focus on one state also produces worthy results. Figure 15 showcases the total public institutions four-year bachelor's degree graduates loan size by gender for the state of Virginia from 2010 to 2018. This is interesting because according to "Education Data", women hold more student loan debt. Also, notice that within 7 years, the average debt size increased almost 6,000 for both males and females. This further implements how tution cost continue to rise every year.
+```{r echo=FALSE}
+###
+gender <- read_excel("Loans by Gender.xlsx")
+loan_by_gender <- melt(gender, id=c("Year", "Sex"))
+ 
+genderplot<-ggplot(loan_by_gender, aes(x = Year, y = value, colour = Sex)) + geom_line()
+
+print(genderplot+labs(y="Average Debt Size in Thousands")+ labs(caption = "Figure 15: Average Loan Debt Size by Gender (in thousands)"))
+```
+
+Figure 16 below displays the total balance of direct loans per state as of June 30th, 2020. Notice that Wyoming, Alaska, and North Dakota have the lowest balances where as California, Texas, and Florida have the highest balances. This could be due to population size of the states as well as the number of colleges that are offered in that state. For example, Alaska has a population of 731,545 and 10 colleges/universities. California has a population of 39.51 million and over 281 colleges/universities.
+
+```{r echo=FALSE}
+library(readxl)
+location <- read_excel("Debt by Location.xls")
+
+library(usmap)
+library(ggplot2)
+
+p<-plot_usmap(data = location, values = "balance", color = "blue") + scale_fill_continuous(low = "white", high = "blue", name = "Balance (in billions)", label = scales::comma) + theme(legend.position = "right")
+
+print(p + labs(caption="Figure 16: Total Loan Balance per State"))
+```
+
+We also reviewed what the student debt levels look like across different majors. Additionally, we took into account the expected early career salary of each major. Based on this "debt-to-earnings ratio" we found that engineers of various sorts tend to have the best ratio while law and pharmaceutical students tend to have the worst. This data is from 2017 Student Loan Hero data. We had to leave this plot off of the PDF report because the functionality of plotly generate in PDF format. Instead the code we used is in our RMD file and we include the plot in our presentation.
+
+```{r eval=FALSE, include=FALSE}
+major <- read.csv("Major Debt.csv")
+
+x <- ggplot(major, aes(Average_Debt,Early_Median_Wage, color=Major))
+
+
+x + geom_point() + scale_y_continuous() + scale_x_continuous()
+
+library(plotly)
+
+wage <- major$Early_Median_Wage
+mdebt <- major$Average_Debt
+pmajor <- major$Major
+ratio <- major$Ratio
+
+fig <- plot_ly(type = 'scatter', mode = 'markers') 
+fig <- fig %>%
+  add_trace(
+    x = wage, 
+    y = mdebt,
+    text = pmajor,
+    color = ~pmajor,
+    showlegend = F
+  ) 
+fig <- fig %>%
+layout(title = "Wage vs Debt by Major",
+         xaxis = list(title = "Wage"), yaxis = list(title= "Debt"))
+
+fig <- fig %>%
+ layout(annotations = 
+ list(x = 1, y = -0.1,text = "Figure 17", showarrow = F, xref='paper', yref='paper', 
+      xanchor='right', yanchor='auto', xshift=0, yshift=0,
+      font=list(size=10, color="black")))
+
+```
+
+```{r eval=FALSE, warning=FALSE, include=FALSE}
+
+fig
+
+```
+
+## 4.4 State
+
+When thinking about the current state of student debt, we opted to provide a map of the United States with average debt by state, Figure 18. From this map, we can see that there are higher debt levels on the east and west coast and lower debt levels in the midwest.This is interesting because the regions with the highest debt per capita are also the regions with the highest populations. This suggests that the average student pays more for college in these areas.The higher college tuition in these areas can attributed to higher costs of living and more expensive and/or private colleges on the coast when compared to the midwest. This data is as recent as March 31,2021; the data was retrieved from Enterprise Data Warehouse.
+
+```{r include=FALSE}
+Current <- read.csv("Portfolio-by-Location.csv")
+
+if (require("maps")) {
+  mdat <- map_data("state")
+}
+
+head(mdat)
+
+if (require("maps")) {
+  states <- map_data("state")
+  debt <- Current
+  names(debt) <- tolower(names(debt))
+}
+
+head(debt)
+
+b <- rename(mdat, state = region)
+a <- merge(debt, b, by = "state")
+odat <- a[order(a$order), ]
+
+head(odat)
+```
+
+```{r echo=FALSE, warning=FALSE}
+ggplot(odat, aes(x=long, y=lat,group=group)) + geom_polygon(aes(fill=average), colour = alpha("white", 1/2), size = 0.2) + labs(caption = "Figure 17 - Average Debt per Capita by State") + scale_fill_continuous(low="white", high="red")
+
+```
+
+# 5. Conclusions
+  Based on recent events with COVID-19 and potential changes in policy, the future for student debt remains uncertain. With loan payments starting again February 1, 2022, many debt holders may not be in a position to begin repaying their loans. This has potential to exacerbate the student debt issue.
+
+- Increases in costs for higher education are outpacing increases in median income
+- Increases in debt size is affecting all ages and both men and women
+- The “debt-to-earnings” ratio varies by major
+- The amount of loans in excess of 80 thousand dollars are growing faster then they can be paid off
+- Student debt affects the entire country but has higher rates on the coasts of the US
+ 
+### References
+[1] [https://nces.ed.gov/about/](https://nces.ed.gov/about/)\
+[2] [https://studentloanhero.com/featured/majors-students-debt/](https://studentloanhero.com/featured/majors-students-debt/)\
+[3] [https://fred.stlouisfed.org](https://fred.stlouisfed.org)\
+[4] [https://studentaid.gov/data-center/student/portfolio](https://studentaid.gov/data-center/student/portfolio)\
+
+
